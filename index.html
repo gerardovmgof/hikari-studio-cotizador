@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hikaru Studio — Cotizador</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+
+:root{
+  --paper:#eee8db;
+  --paper-light:#f8f5ec;
+  --ink:#2a2420;
+  --ink-soft:#5c5348;
+  --red:#a5372c;
+  --red-glow:rgba(165,55,44,0.12);
+  --gold:#a9824f;
+  --line:#d6cdb8;
+  --green:#4f6d4a;
+}
+
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  background:
+    radial-gradient(ellipse at top left, rgba(255,255,255,0.4), transparent 60%),
+    var(--paper);
+  color:var(--ink);
+  font-family:'EB Garamond', serif;
+  min-height:100vh;
+  padding:48px 20px 80px;
+}
+
+.sheet{
+  max-width:780px;
+  margin:0 auto;
+  background:var(--paper-light);
+  border:1px solid var(--line);
+  box-shadow:0 1px 0 rgba(255,255,255,0.6) inset, 0 30px 60px -30px rgba(42,36,32,0.35);
+  position:relative;
+}
+.sheet::before{
+  content:"";
+  position:absolute;
+  inset:10px;
+  border:1px solid var(--line);
+  pointer-events:none;
+}
+
+.tanzaku{
+  position:absolute;
+  left:-2px;
+  top:70px;
+  bottom:70px;
+  width:26px;
+  border-left:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.tanzaku span{
+  writing-mode:vertical-rl;
+  font-family:'Shippori Mincho', serif;
+  letter-spacing:0.35em;
+  font-size:11px;
+  color:var(--ink-soft);
+  opacity:0.6;
+}
+
+header{padding:52px 56px 30px; text-align:center; position:relative;}
+.mark{
+  width:96px; height:96px; margin:0 auto 18px;
+  position:relative; display:flex; align-items:center; justify-content:center;
+}
+.mark img{width:100%; height:100%; object-fit:contain; display:block;}
+h1.brand{font-family:'Shippori Mincho', serif; font-weight:600; font-size:28px; letter-spacing:0.42em; margin:0 0 10px -0.42em; color:var(--ink);}
+.tagline{font-style:italic; font-size:16px; color:var(--ink-soft);}
+.subheading-jp{font-family:'Shippori Mincho', serif; font-size:13px; letter-spacing:0.3em; color:var(--gold); margin-top:10px;}
+
+hr.hairline{border:none; border-top:1px solid var(--line); margin:0 56px;}
+
+section{padding:36px 56px; border-bottom:1px solid var(--line);}
+section:last-of-type{border-bottom:none;}
+
+.section-head{display:flex; align-items:baseline; gap:14px; margin-bottom:8px; flex-wrap:wrap;}
+.section-num{font-family:'Shippori Mincho', serif; font-size:13px; color:var(--red); letter-spacing:0.1em; border:1px solid var(--red); padding:2px 8px;}
+.section-title{font-family:'Shippori Mincho', serif; font-weight:600; font-size:19px; letter-spacing:0.06em;}
+.section-sub{font-style:italic; font-size:14px; color:var(--ink-soft); margin-left:auto;}
+.section-help{font-size:14px; color:var(--ink-soft); margin:0 0 22px; font-style:italic;}
+
+.field-block{flex:1; min-width:220px;}
+label.field-label{display:block; font-family:'Shippori Mincho', serif; font-size:12.5px; letter-spacing:0.14em; color:var(--ink-soft); margin-bottom:8px;}
+input[type=number], input[type=text]{
+  width:100%; font-family:'EB Garamond', serif; font-size:19px; padding:10px 12px;
+  background:transparent; border:none; border-bottom:1.5px solid var(--ink); color:var(--ink); outline:none;
+}
+input[type=number]:focus, input[type=text]:focus{border-bottom-color:var(--red);}
+input:disabled{color:var(--ink-soft); border-bottom-style:dashed;}
+
+.client-row{display:flex; gap:24px; flex-wrap:wrap; margin-bottom:26px;}
+
+.quote-row{display:flex; align-items:flex-start; gap:28px; flex-wrap:wrap;}
+.tier-note{font-size:14px; color:var(--ink-soft); margin-top:8px; min-height:20px;}
+.tier-note b{color:var(--red); font-weight:600;}
+.folio-status{font-size:13px; color:var(--ink-soft); margin-top:4px; min-height:18px;}
+.folio-warning{font-size:13.5px; color:var(--red); margin-top:6px; font-weight:600;}
+.folio-ok{font-size:13.5px; color:var(--green); margin-top:6px;}
+.reset-link{font-size:12.5px; color:var(--ink-soft); text-decoration:underline; cursor:pointer; margin-top:10px; display:inline-block;}
+.reset-confirm{margin-top:8px; font-size:13px; background:var(--red-glow); padding:8px 12px; display:none;}
+.reset-confirm.show{display:block;}
+.reset-confirm button{
+  font-family:'EB Garamond', serif; font-size:13px; border:1px solid var(--red); background:transparent;
+  color:var(--red); padding:3px 10px; margin-right:8px; cursor:pointer; margin-top:6px;
+}
+.reset-confirm button.primary{background:var(--red); color:white;}
+
+.storage-note{font-size:12.5px; color:var(--gold); margin-top:10px; display:none;}
+.storage-note.show{display:block;}
+
+.stamp{
+  width:104px; height:104px; min-width:104px; border-radius:50%; border:2px solid var(--red);
+  position:relative; display:flex; align-items:center; justify-content:center;
+  transform:rotate(-9deg); opacity:0; transition:opacity 0.35s ease; mix-blend-mode:multiply;
+}
+.stamp.show{opacity:1;}
+.stamp::before{content:""; position:absolute; inset:8px; border:1px dashed var(--red); border-radius:50%;}
+.stamp .pct{font-family:'Shippori Mincho', serif; font-weight:800; font-size:26px; color:var(--red); line-height:1;}
+.stamp .pct-label{position:absolute; bottom:16px; font-family:'Shippori Mincho', serif; font-size:8px; letter-spacing:0.14em; color:var(--red);}
+
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+.card{border:1px solid var(--line); background:var(--paper-light); padding:22px 20px; cursor:pointer; position:relative; transition:border-color 0.2s ease, background 0.2s ease;}
+.card:hover{border-color:var(--gold);}
+.card.selected{border-color:var(--red); background:linear-gradient(180deg, var(--paper-light), var(--red-glow));}
+.card .check-box{position:absolute; top:20px; right:20px; width:16px; height:16px; border:1.5px solid var(--ink-soft);}
+.card.selected .check-box{border-color:var(--red); background:var(--red);}
+.card.selected .check-box::after{content:""; position:absolute; left:5px; top:1px; width:4px; height:9px; border:solid white; border-width:0 1.5px 1.5px 0; transform:rotate(45deg);}
+.card h3{font-family:'Shippori Mincho', serif; font-size:17px; margin:0 0 4px; padding-right:26px;}
+.card .price{font-family:'Shippori Mincho', serif; color:var(--red); font-size:20px; margin-bottom:12px;}
+.card ul{margin:0; padding-left:18px; font-size:14.5px; color:var(--ink-soft); line-height:1.55;}
+
+.addon-list{display:flex; flex-direction:column;}
+.addon{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:15px 0; border-bottom:1px solid var(--line);}
+.addon:last-child{border-bottom:none;}
+.addon-left{display:flex; align-items:flex-start; gap:14px;}
+.addon-left input[type=checkbox]{
+  appearance:none; width:17px; height:17px; border:1.5px solid var(--ink-soft); cursor:pointer; position:relative; flex:none; margin-top:3px;
+}
+.addon-left input[type=checkbox]:checked{border-color:var(--red); background:var(--red);}
+.addon-left input[type=checkbox]:checked::after{content:""; position:absolute; left:5px; top:1px; width:4px; height:9px; border:solid white; border-width:0 1.5px 1.5px 0; transform:rotate(45deg);}
+.addon-name{font-size:16px; display:block;}
+.addon-desc{font-size:13px; font-style:italic; color:var(--ink-soft); margin-top:3px; max-width:340px; line-height:1.45;}
+.addon-right{display:flex; flex-direction:column; align-items:flex-end; gap:6px;}
+.addon-price{font-family:'Shippori Mincho', serif; font-size:15px; color:var(--ink-soft); white-space:nowrap;}
+.addon-qty{display:flex; align-items:center; gap:8px;}
+.addon-qty input[type=number]{width:56px; font-size:15px; text-align:center; border-bottom:1px solid var(--line);}
+.addon-qty span{font-size:13px; color:var(--ink-soft);}
+
+.summary-box{border:1px solid var(--line); padding:26px 28px; background:var(--paper-light);}
+.summary-line{display:flex; justify-content:space-between; font-size:16px; padding:8px 0;}
+.summary-line.muted{color:var(--ink-soft); font-size:15px;}
+.summary-line.discount{color:var(--red);}
+.summary-divider{border-top:1px solid var(--ink); margin:10px 0;}
+.summary-total{display:flex; justify-content:space-between; align-items:center; padding-top:6px;}
+.summary-total .label{font-family:'Shippori Mincho', serif; font-size:15px; letter-spacing:0.1em; color:var(--ink-soft);}
+.summary-total .amount{font-family:'Shippori Mincho', serif; font-size:34px; font-weight:700; color:var(--red);}
+.iva-toggle{display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14px; color:var(--ink-soft);}
+.iva-toggle input{width:16px; height:16px;}
+
+.save-row{margin-top:22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
+.save-btn{
+  font-family:'Shippori Mincho', serif; letter-spacing:0.08em; font-size:14.5px;
+  background:var(--red); color:white; border:none; padding:13px 26px; cursor:pointer; transition:background 0.2s ease;
+}
+.save-btn:hover{background:#8a2e24;}
+.save-btn:disabled{background:var(--line); color:var(--ink-soft); cursor:not-allowed;}
+.save-msg{font-size:14px; color:var(--green); font-style:italic;}
+.save-msg.error{color:var(--red);}
+
+.history-actions{display:flex; align-items:center; gap:12px; margin-left:auto;}
+.export-btn{
+  font-family:'Shippori Mincho', serif; letter-spacing:0.06em; font-size:12.5px;
+  background:transparent; color:var(--red); border:1px solid var(--red); padding:7px 14px; cursor:pointer;
+  transition:background 0.2s ease, color 0.2s ease;
+}
+.export-btn:hover:not(:disabled){background:var(--red); color:white;}
+.export-btn:disabled{border-color:var(--line); color:var(--ink-soft); cursor:not-allowed;}
+
+.history-table{width:100%; border-collapse:collapse; font-size:14px;}
+.history-table th{
+  text-align:left; font-family:'Shippori Mincho', serif; font-weight:600; font-size:11.5px;
+  letter-spacing:0.08em; color:var(--ink-soft); border-bottom:1px solid var(--ink); padding:6px 8px;
+}
+.history-table td{padding:8px; border-bottom:1px solid var(--line); vertical-align:top;}
+.history-table tr:last-child td{border-bottom:none;}
+.history-wrap{max-height:260px; overflow-y:auto; border:1px solid var(--line);}
+.history-empty{font-size:14px; color:var(--ink-soft); font-style:italic; padding:14px 4px;}
+.folio-pill{font-family:'Shippori Mincho', serif; color:var(--red); font-weight:600;}
+.pdf-row-btn{
+  font-family:'EB Garamond', serif; font-size:12.5px; letter-spacing:0.04em;
+  background:transparent; color:var(--red); border:1px solid var(--red); padding:4px 10px; cursor:pointer;
+  transition:background 0.2s ease, color 0.2s ease;
+}
+.pdf-row-btn:hover{background:var(--red); color:white;}
+
+footer{padding:34px 56px 46px;}
+footer h4{font-family:'Shippori Mincho', serif; font-size:13px; letter-spacing:0.14em; color:var(--ink-soft); margin:0 0 10px;}
+footer ul{margin:0 0 20px; padding-left:18px; font-size:14px; color:var(--ink-soft); line-height:1.7;}
+footer ul:last-child{margin-bottom:0;}
+.foot-mark{text-align:center; font-family:'Shippori Mincho', serif; font-size:11px; letter-spacing:0.3em; color:var(--gold); margin-top:10px;}
+
+@media (max-width:640px){
+  body{padding:24px 8px 60px;}
+  header{padding:40px 26px 26px;}
+  section{padding:28px 26px;}
+  footer{padding:28px 26px 36px;}
+  .cards{grid-template-columns:1fr;}
+  .quote-row{flex-direction:column; align-items:flex-start;}
+  .stamp{margin:0 auto;}
+  h1.brand{font-size:22px;}
+  .tanzaku{display:none;}
+  .addon{flex-direction:column;}
+  .addon-right{align-items:flex-start; width:100%;}
+  .section-head{flex-direction:column; align-items:flex-start;}
+  .history-actions{margin-left:0;}
+}
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="tanzaku"><span>光 HIKARU STUDIO · FOTOGRAFÍA Y VIDEO</span></div>
+
+  <header>
+    <div class="mark" id="headerMark"><img src="logo.png" alt="Hikaru Studio"></div>
+    <h1 class="brand">HIKARU STUDIO</h1>
+    <div class="tagline">Cotizador de servicios fotográficos</div>
+    <div class="subheading-jp">見積書 · みつもりしょ</div>
+  </header>
+
+  <hr class="hairline">
+
+  <section>
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <span class="section-title">Cliente y folio</span>
+    </div>
+    <p class="section-help">El folio se asigna automáticamente a partir del registro guardado, para que nunca se repita. Puedes editarlo si necesitas capturar una cotización anterior.</p>
+    <div class="client-row">
+      <div class="field-block">
+        <label class="field-label">NOMBRE DEL CLIENTE</label>
+        <input type="text" id="clientName" placeholder="Ej. María Torres">
+      </div>
+    </div>
+    <div class="quote-row">
+      <div class="field-block">
+        <label class="field-label">FOLIO / NÚMERO DE CLIENTE</label>
+        <input type="number" id="quoteNumber" min="1" step="1" placeholder="Cargando...">
+        <div class="tier-note" id="tierNote">Cargando registro de folios…</div>
+        <div id="folioStatus"></div>
+        <span class="reset-link" id="resetLink">Reiniciar numeración de folios</span>
+        <div class="reset-confirm" id="resetConfirm">
+          Esto borrará todo el historial guardado y reiniciará el folio en 1. ¿Confirmar?
+          <div>
+            <button class="primary" id="resetConfirmBtn">Sí, reiniciar</button>
+            <button id="resetCancelBtn">Cancelar</button>
+          </div>
+        </div>
+        <div class="storage-note" id="storageNote">El almacenamiento permanente no está disponible en este momento: el registro se mantendrá mientras esta ventana esté abierta. Usa "Exportar a Excel" para respaldarlo.</div>
+      </div>
+      <div class="stamp" id="stamp">
+        <div class="pct" id="stampPct">0%</div>
+        <div class="pct-label">DESCUENTO</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <span class="section-title">Servicios</span>
+    </div>
+    <p class="section-help">Puedes seleccionar más de uno si el cliente contrata varios servicios en la misma cotización.</p>
+    <div class="cards" id="cards">
+      <div class="card" data-service="foto">
+        <div class="check-box"></div>
+        <h3>Foto y Edición</h3>
+        <div class="price">$12,500 MXN</div>
+        <ul>
+          <li>Cobertura fotográfica</li>
+          <li>Edición y retoque profesional (50–100 fotos)</li>
+          <li>Entrega digital en alta resolución</li>
+        </ul>
+      </div>
+      <div class="card" data-service="video">
+        <div class="check-box"></div>
+        <h3>Video y Edición</h3>
+        <div class="price">$15,000 MXN</div>
+        <ul>
+          <li>Grabación de video (1 cámara)</li>
+          <li>Edición profesional (3–5 min)</li>
+          <li>Música, corrección de color y efectos básicos</li>
+          <li>Entrega digital en alta resolución</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <span class="section-title">Servicios adicionales</span>
+      <span class="section-sub">opcionales</span>
+    </div>
+    <div class="addon-list" id="addonList"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <span class="section-title">Resumen de cotización</span>
+    </div>
+    <div class="summary-box">
+      <div class="summary-line"><span>Servicio(s) seleccionado(s)</span><span id="sumService">—</span></div>
+      <div class="summary-line muted"><span>Adicionales</span><span id="sumAddons">$0</span></div>
+      <div class="summary-line"><span>Subtotal</span><span id="sumSubtotal">$0</span></div>
+      <div class="summary-line discount"><span id="sumDiscountLabel">Descuento (0%)</span><span id="sumDiscount">-$0</span></div>
+      <div class="summary-line muted" id="sumIvaRow" style="display:none;"><span>IVA (16%)</span><span id="sumIva">$0</span></div>
+      <div class="summary-divider"></div>
+      <div class="summary-total">
+        <span class="label">TOTAL A PAGAR</span>
+        <span class="amount" id="sumTotal">$0</span>
+      </div>
+      <label class="iva-toggle">
+        <input type="checkbox" id="ivaToggle">
+        Incluir IVA (16%) en el total
+      </label>
+      <div class="save-row">
+        <button class="save-btn" id="saveBtn">Guardar cotización en el registro</button>
+        <span class="save-msg" id="saveMsg"></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="section-num">05</span>
+      <span class="section-title">Historial de cotizaciones</span>
+      <span class="section-sub" id="historyCount"></span>
+      <div class="history-actions">
+        <button class="export-btn" id="exportBtn">Exportar a Excel</button>
+      </div>
+    </div>
+    <div class="history-wrap">
+      <table class="history-table" id="historyTable">
+        <thead>
+          <tr><th>Folio</th><th>Cliente</th><th>Servicio(s)</th><th>Desc.</th><th>Total</th><th>Fecha</th><th>PDF</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <div class="history-empty" id="historyEmpty">Aún no hay cotizaciones guardadas.</div>
+    </div>
+  </section>
+
+  <footer>
+    <h4>NOTAS IMPORTANTES</h4>
+    <ul>
+      <li>Precios en MXN. Pueden variar según ubicación y complejidad del proyecto.</li>
+      <li>Se requiere anticipo del 50% para apartar la fecha.</li>
+      <li>El saldo se liquida al entregar el material final.</li>
+      <li>Precios base no incluyen IVA (16%), salvo que se active la opción correspondiente.</li>
+      <li>Esta cotización es válida por 30 días a partir de su emisión.</li>
+    </ul>
+    <div class="foot-mark">光 HIKARU STUDIO</div>
+  </footer>
+</div>
+
+<script>
+// ---------- data ----------
+const services = {
+  foto:  { name:"Foto y Edición",  price:12500 },
+  video: { name:"Video y Edición", price:15000 }
+};
+
+const addons = [
+  { id:'edicion_avanzada', label:'Edición avanzada (más de 5 min)', price:2000, type:'checkbox',
+    desc:'Aplica cuando la edición final del video supera los 5 minutos de duración.' },
+  { id:'entrega_express',  label:'Entrega express (24–48 hrs)',     price:1500, type:'checkbox',
+    desc:'Prioridad en el flujo de edición para entregar el material final en 1 a 2 días hábiles.' },
+  { id:'cobertura_hora',   label:'Cobertura adicional por hora',    price:1000, type:'qty', unit:'hr',
+    desc:'Costo por cada hora de sesión que excede el tiempo base incluido en el paquete (aprox. 3–4 hrs).' },
+  { id:'fotos_adicionales',label:'Fotos adicionales editadas',      price:50,   type:'qty', unit:'foto',
+    desc:'Fotos extra retocadas y entregadas, más allá de las 50–100 incluidas en el paquete base de Foto y Edición.' },
+  { id:'dron',             label:'Grabación con dron',              price:2500, type:'checkbox',
+    desc:'Incluye equipo, piloto y tomas aéreas complementarias a la cobertura principal.' },
+  { id:'segundo_camara',   label:'Segundo camarógrafo / asistente', price:1500, type:'checkbox',
+    desc:'Apoyo de una segunda persona durante la sesión, para cobertura desde otro ángulo o asistencia técnica.' }
+];
+
+const tiers = [
+  {min:1,   max:20,  pct:90},
+  {min:21,  max:40,  pct:80},
+  {min:41,  max:60,  pct:70},
+  {min:61,  max:80,  pct:60},
+  {min:81,  max:100, pct:50},
+  {min:101, max:120, pct:40},
+  {min:121, max:140, pct:30},
+  {min:141, max:160, pct:20}
+];
+
+function getTier(n){
+  if(!n || n < 1) return null;
+  for(const t of tiers){ if(n <= t.max) return t; }
+  return {min:161, max:Infinity, pct:0};
+}
+
+function fmt(n){
+  return n.toLocaleString('es-MX', {style:'currency', currency:'MXN', minimumFractionDigits:2});
+}
+
+// ---------- render addons ----------
+const addonList = document.getElementById('addonList');
+addons.forEach(a=>{
+  const row = document.createElement('div');
+  row.className='addon';
+  if(a.type==='checkbox'){
+    row.innerHTML = `
+      <div class="addon-left">
+        <input type="checkbox" data-id="${a.id}" class="addon-check">
+        <span>
+          <span class="addon-name">${a.label}</span>
+          <span class="addon-desc">${a.desc}</span>
+        </span>
+      </div>
+      <div class="addon-right"><span class="addon-price">$${a.price.toLocaleString('es-MX')}</span></div>`;
+  }else{
+    row.innerHTML = `
+      <div class="addon-left">
+        <input type="checkbox" data-id="${a.id}" class="addon-check">
+        <span>
+          <span class="addon-name">${a.label}</span>
+          <span class="addon-desc">${a.desc}</span>
+        </span>
+      </div>
+      <div class="addon-right">
+        <span class="addon-price">$${a.price.toLocaleString('es-MX')} / ${a.unit}</span>
+        <div class="addon-qty">
+          <input type="number" min="0" value="0" step="1" data-qty="${a.id}" class="addon-qty-input" disabled>
+          <span>${a.unit}(s)</span>
+        </div>
+      </div>`;
+  }
+  addonList.appendChild(row);
+});
+
+document.querySelectorAll('.addon-check').forEach(chk=>{
+  chk.addEventListener('change', (e)=>{
+    const id = e.target.dataset.id;
+    const qtyInput = document.querySelector(`[data-qty="${id}"]`);
+    if(qtyInput){
+      qtyInput.disabled = !e.target.checked;
+      if(e.target.checked && qtyInput.value==='0') qtyInput.value = 1;
+    }
+    recalc();
+  });
+});
+document.querySelectorAll('.addon-qty-input').forEach(inp=> inp.addEventListener('input', recalc));
+
+// ---------- service multi-select ----------
+const selectedServices = new Set();
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('click', ()=>{
+    const s = card.dataset.service;
+    if(selectedServices.has(s)){
+      selectedServices.delete(s);
+      card.classList.remove('selected');
+    } else {
+      selectedServices.add(s);
+      card.classList.add('selected');
+    }
+    recalc();
+  });
+});
+
+// ---------- persistent registry (with in-memory fallback) ----------
+const STORAGE_KEY = 'hikaru-registro';
+let registry = { nextFolio: 1, quotes: [] };
+let persistentStorageOk = true; // se vuelve false si window.storage falla o no existe
+
+function hasStorageApi(){
+  try{
+    const testKey = '__hikaru_test__';
+    window.localStorage.setItem(testKey, '1');
+    window.localStorage.removeItem(testKey);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function loadRegistry(){
+  if(!hasStorageApi()){
+    persistentStorageOk = false;
+    return;
+  }
+  try{
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed.nextFolio === 'number' && Array.isArray(parsed.quotes)){
+        registry = parsed;
+      }
+    }
+  }catch(e){
+    // clave inexistente o corrupta en el primer uso; no se marca como fallo aquí
+  }
+}
+
+// intenta persistir; si no puede, el registro sigue vivo en memoria y se avisa al usuario
+async function persistRegistry(){
+  if(!hasStorageApi()){
+    persistentStorageOk = false;
+    return false;
+  }
+  try{
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(registry));
+    persistentStorageOk = true;
+    return true;
+  }catch(e){
+    console.error('No se pudo escribir en el almacenamiento persistente:', e);
+    persistentStorageOk = false;
+    return false;
+  }
+}
+
+function updateStorageNote(){
+  document.getElementById('storageNote').classList.toggle('show', !persistentStorageOk);
+}
+
+function renderHistory(){
+  const body = document.getElementById('historyBody');
+  const empty = document.getElementById('historyEmpty');
+  const count = document.getElementById('historyCount');
+  const exportBtn = document.getElementById('exportBtn');
+  body.innerHTML = '';
+  const sorted = [...registry.quotes].sort((a,b)=> b.folio - a.folio);
+  if(sorted.length === 0){
+    empty.style.display = 'block';
+    document.getElementById('historyTable').style.display = 'none';
+    exportBtn.disabled = true;
+  }else{
+    empty.style.display = 'none';
+    document.getElementById('historyTable').style.display = 'table';
+    exportBtn.disabled = false;
+    sorted.forEach(q=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="folio-pill">#${q.folio}</td>
+        <td>${q.cliente || '—'}</td>
+        <td>${q.servicios}</td>
+        <td>${q.descuentoPct}%</td>
+        <td>${fmt(q.total)}</td>
+        <td>${q.fecha}</td>
+        <td><button type="button" class="pdf-row-btn" data-folio="${q.folio}">PDF</button></td>`;
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('.pdf-row-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const folio = parseInt(btn.dataset.folio);
+        const q = registry.quotes.find(x=>x.folio===folio);
+        if(q) generateQuotePdf(q);
+      });
+    });
+  }
+  count.textContent = sorted.length ? `${sorted.length} registrada(s)` : '';
+}
+
+function isDuplicateFolio(n){
+  return registry.quotes.some(q => q.folio === n);
+}
+
+function checkFolioStatus(){
+  const n = parseInt(document.getElementById('quoteNumber').value);
+  const statusEl = document.getElementById('folioStatus');
+  const saveBtn = document.getElementById('saveBtn');
+  if(!n || n < 1){
+    statusEl.innerHTML = '';
+    saveBtn.disabled = true;
+    return;
+  }
+  if(isDuplicateFolio(n)){
+    statusEl.innerHTML = `<div class="folio-warning">Este folio ya fue usado. Elige otro número para evitar duplicados.</div>`;
+    saveBtn.disabled = true;
+  } else {
+    statusEl.innerHTML = `<div class="folio-ok">Folio disponible.</div>`;
+    saveBtn.disabled = false;
+  }
+}
+
+async function saveQuote(){
+  const n = parseInt(document.getElementById('quoteNumber').value);
+  const saveMsg = document.getElementById('saveMsg');
+  saveMsg.classList.remove('error');
+
+  if(!n || n < 1){ saveMsg.textContent = 'Ingresa un folio válido.'; saveMsg.classList.add('error'); return; }
+  if(isDuplicateFolio(n)){ saveMsg.textContent = 'Ese folio ya existe en el registro.'; saveMsg.classList.add('error'); return; }
+  if(selectedServices.size === 0){ saveMsg.textContent = 'Selecciona al menos un servicio.'; saveMsg.classList.add('error'); return; }
+
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn.disabled = true;
+  saveMsg.textContent = 'Guardando…';
+
+  const tier = getTier(n);
+  const pct = tier ? tier.pct : 0;
+  const serviciosTexto = [...selectedServices].map(s=>services[s].name).join(' + ');
+  const totalTexto = document.getElementById('sumTotal').textContent;
+  const totalNumerico = parseFloat(totalTexto.replace(/[^0-9.]/g,'')) || 0;
+
+  const serviceItems = [...selectedServices].map(s=>({label:services[s].name, amount:services[s].price}));
+  const addonItems = [];
+  addons.forEach(a=>{
+    const chk = document.querySelector(`.addon-check[data-id="${a.id}"]`);
+    if(chk && chk.checked){
+      if(a.type==='checkbox'){
+        addonItems.push({label:a.label, amount:a.price});
+      }else{
+        const qty = parseInt(document.querySelector(`[data-qty="${a.id}"]`).value) || 0;
+        if(qty > 0) addonItems.push({label:`${a.label} (${qty} ${a.unit}${qty>1?'s':''})`, amount:a.price*qty});
+      }
+    }
+  });
+  const subtotalNumerico = [...serviceItems, ...addonItems].reduce((s,it)=>s+it.amount, 0);
+  const discountAmountNumerico = subtotalNumerico * (pct/100);
+  const ivaOn = document.getElementById('ivaToggle').checked;
+  const ivaAmountNumerico = ivaOn ? (subtotalNumerico - discountAmountNumerico) * 0.16 : 0;
+
+  const quote = {
+    folio: n,
+    cliente: document.getElementById('clientName').value.trim() || 'Sin nombre',
+    servicios: serviciosTexto || 'Sin servicio',
+    descuentoPct: pct,
+    total: totalNumerico,
+    fecha: new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'short', year:'numeric'}),
+    items: [...serviceItems, ...addonItems],
+    subtotal: subtotalNumerico,
+    descuentoMonto: discountAmountNumerico,
+    ivaOn: ivaOn,
+    ivaMonto: ivaAmountNumerico
+  };
+
+  // El registro en memoria SIEMPRE se actualiza primero: guardar nunca debe bloquearse
+  // por un fallo del almacenamiento persistente.
+  registry.quotes.push(quote);
+  if(n + 1 > registry.nextFolio) registry.nextFolio = n + 1;
+
+  const persisted = await persistRegistry();
+  updateStorageNote();
+  renderHistory();
+  saveBtn.disabled = false;
+
+  if(persisted){
+    saveMsg.textContent = `Cotización folio #${n} guardada correctamente.`;
+  }else{
+    saveMsg.textContent = `Cotización folio #${n} registrada en esta sesión (sin almacenamiento permanente disponible).`;
+  }
+  generateQuotePdf(quote);
+  resetFormForNext();
+}
+
+// ---------- PDF export ----------
+function generateQuotePdf(q){
+  if(typeof window.jspdf === 'undefined'){
+    alert('No se pudo cargar la librería de PDF. Verifica tu conexión e intenta de nuevo.');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const marginX = 56;
+  let y = 64;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(165, 55, 44);
+  doc.text('HIKARU STUDIO', marginX, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(90, 83, 72);
+  y += 18;
+  doc.text('Cotización de servicios fotográficos', marginX, y);
+
+  doc.setDrawColor(214, 205, 184);
+  y += 14;
+  doc.line(marginX, y, 539, y);
+
+  y += 28;
+  doc.setTextColor(42, 36, 32);
+  doc.setFontSize(12);
+  doc.text(`Folio: #${q.folio}`, marginX, y);
+  doc.text(`Fecha: ${q.fecha}`, 380, y);
+  y += 18;
+  doc.text(`Cliente: ${q.cliente}`, marginX, y);
+
+  y += 30;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('Concepto', marginX, y);
+  doc.text('Importe', 480, y, {align:'right'});
+  y += 8;
+  doc.setDrawColor(42, 36, 32);
+  doc.line(marginX, y, 539, y);
+  y += 18;
+
+  doc.setFont('helvetica', 'normal');
+  (q.items || []).forEach(it=>{
+    if(y > 740){ doc.addPage(); y = 64; }
+    doc.text(it.label, marginX, y, {maxWidth:380});
+    doc.text(fmt(it.amount), 539, y, {align:'right'});
+    y += 18;
+  });
+
+  y += 6;
+  doc.setDrawColor(214, 205, 184);
+  doc.line(marginX, y, 539, y);
+  y += 20;
+
+  doc.text('Subtotal', marginX, y);
+  doc.text(fmt(q.subtotal || 0), 539, y, {align:'right'});
+  y += 18;
+
+  doc.setTextColor(165, 55, 44);
+  doc.text(`Descuento (${q.descuentoPct}%)`, marginX, y);
+  doc.text('-' + fmt(q.descuentoMonto || 0), 539, y, {align:'right'});
+  y += 18;
+  doc.setTextColor(42, 36, 32);
+
+  if(q.ivaOn){
+    doc.text('IVA (16%)', marginX, y);
+    doc.text(fmt(q.ivaMonto || 0), 539, y, {align:'right'});
+    y += 18;
+  }
+
+  y += 6;
+  doc.setDrawColor(42, 36, 32);
+  doc.line(marginX, y, 539, y);
+  y += 24;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(165, 55, 44);
+  doc.text('TOTAL A PAGAR', marginX, y);
+  doc.text(fmt(q.total), 539, y, {align:'right'});
+
+  y += 46;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(90, 83, 72);
+  const notas = [
+    'Precios en MXN. Pueden variar según ubicación y complejidad del proyecto.',
+    'Se requiere anticipo del 50% para apartar la fecha.',
+    'El saldo se liquida al entregar el material final.',
+    'Precios base no incluyen IVA (16%), salvo que se active la opción correspondiente.',
+    'Esta cotización es válida por 30 días a partir de su emisión.'
+  ];
+  notas.forEach(n=>{
+    doc.text('• ' + n, marginX, y, {maxWidth:483});
+    y += 14;
+  });
+
+  doc.save(`cotizacion-hikaru-folio-${q.folio}.pdf`);
+}
+
+function resetFormForNext(){
+  document.getElementById('clientName').value = '';
+  selectedServices.clear();
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('.addon-check').forEach(chk=>{ chk.checked = false; });
+  document.querySelectorAll('.addon-qty-input').forEach(inp=>{ inp.value = 0; inp.disabled = true; });
+  document.getElementById('ivaToggle').checked = false;
+  document.getElementById('quoteNumber').value = registry.nextFolio;
+  checkFolioStatus();
+  recalc();
+}
+
+document.getElementById('quoteNumber').addEventListener('input', ()=>{
+  checkFolioStatus();
+  recalc();
+});
+document.getElementById('saveBtn').addEventListener('click', saveQuote);
+document.getElementById('ivaToggle').addEventListener('change', recalc);
+
+// reset registry (double confirmation, no native dialogs)
+const resetLink = document.getElementById('resetLink');
+const resetConfirm = document.getElementById('resetConfirm');
+resetLink.addEventListener('click', ()=> resetConfirm.classList.add('show'));
+document.getElementById('resetCancelBtn').addEventListener('click', ()=> resetConfirm.classList.remove('show'));
+document.getElementById('resetConfirmBtn').addEventListener('click', async ()=>{
+  registry = { nextFolio: 1, quotes: [] };
+  await persistRegistry();
+  updateStorageNote();
+  resetConfirm.classList.remove('show');
+  renderHistory();
+  resetFormForNext();
+});
+
+// ---------- Excel export ----------
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(registry.quotes.length === 0) return;
+  if(typeof XLSX === 'undefined'){
+    alert('No se pudo cargar la librería de exportación. Verifica tu conexión e intenta de nuevo.');
+    return;
+  }
+  const sorted = [...registry.quotes].sort((a,b)=> b.folio - a.folio);
+  const rows = sorted.map(q=>({
+    'Folio': q.folio,
+    'Cliente': q.cliente,
+    'Servicio(s)': q.servicios,
+    'Descuento (%)': q.descuentoPct,
+    'Total (MXN)': q.total,
+    'Fecha': q.fecha
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:8},{wch:24},{wch:34},{wch:12},{wch:14},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cotizaciones');
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `historial-cotizaciones-hikaru-${stamp}.xlsx`);
+});
+
+// ---------- calculation ----------
+function recalc(){
+  const sumServiceEl = document.getElementById('sumService');
+  let servicePrice = 0;
+  if(selectedServices.size > 0){
+    servicePrice = [...selectedServices].reduce((sum,s)=> sum + services[s].price, 0);
+    sumServiceEl.textContent = [...selectedServices].map(s=>services[s].name).join(' + ') + ` — ${fmt(servicePrice)}`;
+  } else {
+    sumServiceEl.textContent = 'Sin seleccionar';
+  }
+
+  let addonsTotal = 0;
+  addons.forEach(a=>{
+    const chk = document.querySelector(`.addon-check[data-id="${a.id}"]`);
+    if(chk && chk.checked){
+      if(a.type==='checkbox'){
+        addonsTotal += a.price;
+      } else {
+        const qty = parseInt(document.querySelector(`[data-qty="${a.id}"]`).value) || 0;
+        addonsTotal += a.price * qty;
+      }
+    }
+  });
+  document.getElementById('sumAddons').textContent = fmt(addonsTotal);
+
+  const subtotal = servicePrice + addonsTotal;
+  document.getElementById('sumSubtotal').textContent = fmt(subtotal);
+
+  const n = parseInt(document.getElementById('quoteNumber').value);
+  const tier = getTier(n);
+  const stamp = document.getElementById('stamp');
+  const tierNote = document.getElementById('tierNote');
+  let pct = 0;
+
+  if(tier){
+    pct = tier.pct;
+    stamp.classList.add('show');
+    document.getElementById('stampPct').textContent = pct + '%';
+    if(pct > 0){
+      tierNote.innerHTML = `Folio <b>#${n}</b> — rango <b>${tier.min}–${tier.max===Infinity?'∞':tier.max}</b>: <b>${pct}% de descuento</b>.`;
+    } else {
+      tierNote.innerHTML = `Folio <b>#${n}</b> — fuera de los rangos promocionales (1–160). Sin descuento por volumen.`;
+    }
+  } else {
+    stamp.classList.remove('show');
+    tierNote.textContent = 'Ingresa o confirma el folio para calcular el descuento.';
+  }
+
+  const discountAmount = subtotal * (pct/100);
+  document.getElementById('sumDiscountLabel').textContent = `Descuento (${pct}%)`;
+  document.getElementById('sumDiscount').textContent = '-' + fmt(discountAmount);
+
+  let totalAfterDiscount = subtotal - discountAmount;
+  const ivaOn = document.getElementById('ivaToggle').checked;
+  const ivaRow = document.getElementById('sumIvaRow');
+  let finalTotal = totalAfterDiscount;
+  if(ivaOn){
+    const iva = totalAfterDiscount * 0.16;
+    document.getElementById('sumIva').textContent = fmt(iva);
+    ivaRow.style.display = 'flex';
+    finalTotal = totalAfterDiscount + iva;
+  } else {
+    ivaRow.style.display = 'none';
+  }
+  document.getElementById('sumTotal').textContent = fmt(finalTotal);
+}
+
+// ---------- init ----------
+(async function init(){
+  await loadRegistry();
+  document.getElementById('quoteNumber').value = registry.nextFolio;
+  document.getElementById('quoteNumber').placeholder = '';
+  updateStorageNote();
+  renderHistory();
+  checkFolioStatus();
+  recalc();
+})();
+</script>
+</body>
+</html>
