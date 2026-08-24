@@ -769,7 +769,23 @@ async function saveQuote(){
 }
 
 // ---------- PDF export ----------
-function generateQuotePdf(q){
+let logoDataUrlPromise = null;
+function getLogoDataUrl(){
+  if(!logoDataUrlPromise){
+    logoDataUrlPromise = fetch('logo.png')
+      .then(res => res.blob())
+      .then(blob => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }))
+      .catch(e => { console.error('No se pudo cargar el logo para el PDF:', e); return null; });
+  }
+  return logoDataUrlPromise;
+}
+
+async function generateQuotePdf(q){
   if(typeof window.jspdf === 'undefined'){
     alert('No se pudo cargar la librería de PDF. Verifica tu conexión e intenta de nuevo.');
     return;
@@ -779,15 +795,21 @@ function generateQuotePdf(q){
   const marginX = 56;
   let y = 64;
 
+  const logoDataUrl = await getLogoDataUrl();
+  const textX = logoDataUrl ? marginX + 46 : marginX;
+  if(logoDataUrl){
+    doc.addImage(logoDataUrl, 'PNG', marginX, y - 30, 36, 36);
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(165, 55, 44);
-  doc.text('HIKARI STUDIO', marginX, y);
+  doc.text('HIKARI STUDIO', textX, y);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(90, 83, 72);
   y += 18;
-  doc.text('Cotización de servicios fotográficos', marginX, y);
+  doc.text('Cotización de servicios fotográficos', textX, y);
 
   doc.setDrawColor(214, 205, 184);
   y += 14;
