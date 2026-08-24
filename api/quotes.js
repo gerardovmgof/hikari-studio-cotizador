@@ -4,6 +4,7 @@ function rowToQuote(row) {
   return {
     folio: row.folio,
     cliente: row.cliente,
+    notas: row.notas || '',
     servicios: row.servicios,
     descuentoPct: row.descuento_pct,
     total: Number(row.total),
@@ -47,6 +48,7 @@ export default async function handler(req, res) {
     const { error } = await supabase.from('quotes').insert({
       folio: q.folio,
       cliente: q.cliente || 'Sin nombre',
+      notas: q.notas || null,
       servicios: q.servicios || 'Sin servicio',
       items: q.items || [],
       subtotal: q.subtotal || 0,

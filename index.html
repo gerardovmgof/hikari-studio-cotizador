@@ -138,12 +138,14 @@ input:disabled{color:var(--ink-soft); border-bottom-style:dashed;}
 }
 .stamp.show{opacity:1;}
 .stamp::before{content:""; position:absolute; inset:10px; border:1px dashed var(--red); border-radius:50%; pointer-events:none;}
+.stamp-pct-row{display:flex; align-items:baseline; gap:2px;}
 input.stamp-pct-input{
-  appearance:textfield; width:64px; text-align:center; font-family:'Shippori Mincho', serif; font-weight:800;
+  appearance:textfield; width:44px; text-align:right; font-family:'Shippori Mincho', serif; font-weight:800;
   font-size:26px; color:var(--red); line-height:1; background:transparent; border:none; border-bottom:none; outline:none; padding:0;
 }
 input.stamp-pct-input::-webkit-outer-spin-button, input.stamp-pct-input::-webkit-inner-spin-button{appearance:none; margin:0;}
 input.stamp-pct-input:focus{border-bottom:1.5px solid var(--red);}
+.stamp-pct-sign{font-family:'Shippori Mincho', serif; font-weight:800; font-size:16px; color:var(--red);}
 .stamp .pct-label{font-family:'Shippori Mincho', serif; font-size:9px; letter-spacing:0.1em; color:var(--red); white-space:nowrap;}
 
 .cards{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
@@ -158,7 +160,9 @@ input.stamp-pct-input:focus{border-bottom:1.5px solid var(--red);}
 .card ul{margin:0; padding-left:18px; font-size:14.5px; color:var(--ink-soft); line-height:1.55;}
 
 .addon-list{display:flex; flex-direction:column;}
-.addon{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:15px 0; border-bottom:1px solid var(--line);}
+.addon{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:15px 10px; margin:0 -10px; border-bottom:1px solid var(--line); cursor:pointer; border-radius:2px; transition:background 0.15s ease;}
+.addon:hover{background:rgba(165,55,44,0.05);}
+.addon:has(.addon-check:checked){background:var(--red-glow);}
 .addon:last-child{border-bottom:none;}
 .addon-left{display:flex; align-items:flex-start; gap:14px;}
 .addon-left input[type=checkbox]{
@@ -196,6 +200,11 @@ input.stamp-pct-input:focus{border-bottom:1.5px solid var(--red);}
 .save-msg.error{color:var(--red);}
 
 .history-actions{display:flex; align-items:center; gap:12px; margin-left:auto; flex-wrap:wrap;}
+.history-search{
+  font-family:'EB Garamond', serif; font-size:13.5px; padding:6px 8px; min-width:160px;
+  background:transparent; border:1px solid var(--line); color:var(--ink);
+}
+.history-search:focus{border-color:var(--red); outline:none;}
 .export-range{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft);}
 .export-range input[type=date]{
   font-family:'EB Garamond', serif; font-size:13px; padding:5px 6px;
@@ -216,7 +225,9 @@ input.stamp-pct-input:focus{border-bottom:1.5px solid var(--red);}
 }
 .history-table td{padding:8px; border-bottom:1px solid var(--line); vertical-align:top;}
 .history-table tr:last-child td{border-bottom:none;}
-.history-wrap{max-height:260px; overflow-y:auto; border:1px solid var(--line);}
+.history-wrap{max-height:260px; overflow-y:auto; overflow-x:auto; border:1px solid var(--line);}
+.history-table{min-width:640px;}
+.notas-cell{max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .history-empty{font-size:14px; color:var(--ink-soft); font-style:italic; padding:14px 4px;}
 .folio-pill{font-family:'Shippori Mincho', serif; color:var(--red); font-weight:600;}
 .pdf-row-btn{
@@ -280,6 +291,10 @@ footer ul:last-child{margin-bottom:0;}
         <label class="field-label">NOMBRE DEL CLIENTE</label>
         <input type="text" id="clientName" placeholder="Ej. María Torres">
       </div>
+      <div class="field-block">
+        <label class="field-label">NOTAS / OBSERVACIONES (OPCIONAL)</label>
+        <input type="text" id="clientNotes" placeholder="Ej. Trabajo no concretado, pidió reagendar…">
+      </div>
     </div>
     <div class="quote-row">
       <div class="field-block">
@@ -298,8 +313,11 @@ footer ul:last-child{margin-bottom:0;}
         <div class="storage-note" id="storageNote">No se pudo conectar con el registro compartido en este momento. Verifica tu conexión y recarga la página antes de guardar.</div>
       </div>
       <div class="stamp" id="stamp">
-        <input type="number" id="discountPct" class="stamp-pct-input" min="0" max="100" step="1" value="0">
-        <div class="pct-label">% DESCUENTO</div>
+        <div class="stamp-pct-row">
+          <input type="number" id="discountPct" class="stamp-pct-input" min="0" max="100" step="1" value="0">
+          <span class="stamp-pct-sign">%</span>
+        </div>
+        <div class="pct-label">DESCUENTO</div>
       </div>
     </div>
   </section>
@@ -377,6 +395,7 @@ footer ul:last-child{margin-bottom:0;}
       <span class="section-title">Historial de cotizaciones</span>
       <span class="section-sub" id="historyCount"></span>
       <div class="history-actions">
+        <input type="text" id="historySearch" class="history-search" placeholder="Buscar por cliente…">
         <span class="export-range">
           <input type="date" id="exportFrom" title="Desde">
           <span>–</span>
@@ -388,7 +407,7 @@ footer ul:last-child{margin-bottom:0;}
     <div class="history-wrap">
       <table class="history-table" id="historyTable">
         <thead>
-          <tr><th>Folio</th><th>Cliente</th><th>Servicio(s)</th><th>Desc.</th><th>Total</th><th>Fecha</th><th>PDF</th><th></th></tr>
+          <tr><th>Folio</th><th>Cliente</th><th>Servicio(s)</th><th>Desc.</th><th>Total</th><th>Fecha</th><th>Notas</th><th>PDF</th><th></th></tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
@@ -511,6 +530,17 @@ document.querySelectorAll('.addon-check').forEach(chk=>{
 });
 document.querySelectorAll('.addon-qty-input').forEach(inp=> inp.addEventListener('input', recalc));
 
+// tocar cualquier parte de la fila (no solo el checkbox) la selecciona — más cómodo en celular
+document.querySelectorAll('.addon').forEach(row=>{
+  row.addEventListener('click', (e)=>{
+    if(e.target.closest('.addon-qty')) return;
+    if(e.target.tagName === 'INPUT') return;
+    const chk = row.querySelector('.addon-check');
+    chk.checked = !chk.checked;
+    chk.dispatchEvent(new Event('change'));
+  });
+});
+
 // ---------- service multi-select ----------
 const selectedServices = new Set();
 document.querySelectorAll('.card').forEach(card=>{
@@ -558,17 +588,24 @@ function updateStorageNote(){
   document.getElementById('storageNote').classList.toggle('show', !persistentStorageOk);
 }
 
+function normalizeText(str){
+  return String(str||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function renderHistory(){
   const body = document.getElementById('historyBody');
   const empty = document.getElementById('historyEmpty');
   const count = document.getElementById('historyCount');
   const exportBtn = document.getElementById('exportBtn');
   body.innerHTML = '';
-  const sorted = [...registry.quotes].sort((a,b)=> b.folio - a.folio);
+  const searchTerm = normalizeText(document.getElementById('historySearch').value.trim());
+  const all = [...registry.quotes].sort((a,b)=> b.folio - a.folio);
+  const sorted = searchTerm ? all.filter(q=> normalizeText(q.cliente).includes(searchTerm)) : all;
   if(sorted.length === 0){
     empty.style.display = 'block';
+    empty.textContent = searchTerm ? 'No hay cotizaciones que coincidan con esa búsqueda.' : 'Aún no hay cotizaciones guardadas.';
     document.getElementById('historyTable').style.display = 'none';
-    exportBtn.disabled = true;
+    exportBtn.disabled = all.length === 0;
   }else{
     empty.style.display = 'none';
     document.getElementById('historyTable').style.display = 'table';
@@ -582,6 +619,7 @@ function renderHistory(){
         <td>${q.descuentoPct}%</td>
         <td>${fmt(q.total)}</td>
         <td>${escapeHtml(q.fecha)}</td>
+        <td class="notas-cell" title="${escapeHtml(q.notas || '')}">${escapeHtml(q.notas || '—')}</td>
         <td><button type="button" class="pdf-row-btn" data-folio="${q.folio}">PDF</button></td>
         <td><button type="button" class="delete-row-btn" data-folio="${q.folio}" title="Borrar cotización">✕</button></td>`;
       body.appendChild(tr);
@@ -597,7 +635,9 @@ function renderHistory(){
       btn.addEventListener('click', ()=> deleteQuote(parseInt(btn.dataset.folio)));
     });
   }
-  count.textContent = sorted.length ? `${sorted.length} registrada(s)` : '';
+  count.textContent = searchTerm
+    ? `${sorted.length} de ${all.length} registrada(s)`
+    : (all.length ? `${all.length} registrada(s)` : '');
 }
 
 async function deleteQuote(folio){
@@ -677,6 +717,7 @@ async function saveQuote(){
   const quote = {
     folio: n,
     cliente: document.getElementById('clientName').value.trim() || 'Sin nombre',
+    notas: document.getElementById('clientNotes').value.trim(),
     servicios: serviciosTexto || 'Sin servicio',
     descuentoPct: pct,
     total: totalNumerico,
@@ -760,6 +801,17 @@ function generateQuotePdf(q){
   y += 18;
   doc.text(`Cliente: ${q.cliente}`, marginX, y);
 
+  if(q.notas){
+    y += 16;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.setTextColor(90, 83, 72);
+    doc.text(`Notas: ${q.notas}`, marginX, y, {maxWidth:483});
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(42, 36, 32);
+    doc.setFontSize(12);
+  }
+
   y += 30;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
@@ -831,6 +883,7 @@ function generateQuotePdf(q){
 
 function resetFormForNext(){
   document.getElementById('clientName').value = '';
+  document.getElementById('clientNotes').value = '';
   selectedServices.clear();
   document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
   document.querySelectorAll('.addon-check').forEach(chk=>{ chk.checked = false; });
@@ -848,6 +901,7 @@ document.getElementById('quoteNumber').addEventListener('input', (e)=>{
   recalc();
 });
 document.getElementById('discountPct').addEventListener('input', recalc);
+document.getElementById('historySearch').addEventListener('input', renderHistory);
 document.getElementById('saveBtn').addEventListener('click', saveQuote);
 document.getElementById('ivaToggle').addEventListener('change', recalc);
 
@@ -896,10 +950,11 @@ document.getElementById('exportBtn').addEventListener('click', async ()=>{
     'Servicio(s)': q.servicios,
     'Descuento (%)': q.descuentoPct,
     'Total (MXN)': q.total,
-    'Fecha': q.fecha
+    'Fecha': q.fecha,
+    'Notas': q.notas || ''
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [{wch:8},{wch:24},{wch:34},{wch:12},{wch:14},{wch:14}];
+  ws['!cols'] = [{wch:8},{wch:24},{wch:34},{wch:12},{wch:14},{wch:14},{wch:34}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Cotizaciones');
   const stamp = new Date().toISOString().slice(0,10);
