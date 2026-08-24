@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hikaru Studio — Cotizador</title>
-<meta name="description" content="Cotiza servicios de fotografía y video con Hikaru Studio: paquetes, adicionales y descuentos calculados al instante.">
+<title>Hikari Studio — Cotizador</title>
+<meta name="description" content="Cotiza servicios de fotografía y video con Hikari Studio: paquetes, adicionales y descuentos calculados al instante.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Hikaru Studio — Cotizador">
-<meta property="og:description" content="Cotiza servicios de fotografía y video con Hikaru Studio: paquetes, adicionales y descuentos calculados al instante.">
-<meta property="og:image" content="https://hikaru-studio-cotizador.vercel.app/og-image.jpg">
-<meta property="og:url" content="https://hikaru-studio-cotizador.vercel.app">
+<meta property="og:title" content="Hikari Studio — Cotizador">
+<meta property="og:description" content="Cotiza servicios de fotografía y video con Hikari Studio: paquetes, adicionales y descuentos calculados al instante.">
+<meta property="og:image" content="https://hikari-studio-cotizador.vercel.app/og-image.jpg">
+<meta property="og:url" content="https://hikari-studio-cotizador.vercel.app">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Hikaru Studio — Cotizador">
-<meta name="twitter:description" content="Cotiza servicios de fotografía y video con Hikaru Studio: paquetes, adicionales y descuentos calculados al instante.">
-<meta name="twitter:image" content="https://hikaru-studio-cotizador.vercel.app/og-image.jpg">
+<meta name="twitter:title" content="Hikari Studio — Cotizador">
+<meta name="twitter:description" content="Cotiza servicios de fotografía y video con Hikari Studio: paquetes, adicionales y descuentos calculados al instante.">
+<meta name="twitter:image" content="https://hikari-studio-cotizador.vercel.app/og-image.jpg">
 <link rel="icon" type="image/png" href="logo.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -242,11 +242,11 @@ footer ul:last-child{margin-bottom:0;}
 <body>
 
 <div class="sheet">
-  <div class="tanzaku"><span>光 HIKARU STUDIO · FOTOGRAFÍA Y VIDEO</span></div>
+  <div class="tanzaku"><span>光 HIKARI STUDIO · FOTOGRAFÍA Y VIDEO</span></div>
 
   <header>
-    <div class="mark" id="headerMark"><img src="logo.png" alt="Hikaru Studio"></div>
-    <h1 class="brand">HIKARU STUDIO</h1>
+    <div class="mark" id="headerMark"><img src="logo.png" alt="Hikari Studio"></div>
+    <h1 class="brand">HIKARI STUDIO</h1>
     <div class="tagline">Cotizador de servicios fotográficos</div>
     <div class="subheading-jp">見積書 · みつもりしょ</div>
   </header>
@@ -384,7 +384,7 @@ footer ul:last-child{margin-bottom:0;}
       <li>Precios base no incluyen IVA (16%), salvo que se active la opción correspondiente.</li>
       <li>Esta cotización es válida por 30 días a partir de su emisión.</li>
     </ul>
-    <div class="foot-mark">光 HIKARU STUDIO</div>
+    <div class="foot-mark">光 HIKARI STUDIO</div>
   </footer>
 </div>
 
@@ -496,13 +496,13 @@ document.querySelectorAll('.card').forEach(card=>{
 });
 
 // ---------- persistent registry (with in-memory fallback) ----------
-const STORAGE_KEY = 'hikaru-registro';
+const STORAGE_KEY = 'hikari-registro';
 let registry = { nextFolio: 1, quotes: [] };
 let persistentStorageOk = true; // se vuelve false si window.storage falla o no existe
 
 function hasStorageApi(){
   try{
-    const testKey = '__hikaru_test__';
+    const testKey = '__hikari_test__';
     window.localStorage.setItem(testKey, '1');
     window.localStorage.removeItem(testKey);
     return true;
@@ -694,7 +694,7 @@ function generateQuotePdf(q){
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(165, 55, 44);
-  doc.text('HIKARU STUDIO', marginX, y);
+  doc.text('HIKARI STUDIO', marginX, y);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(90, 83, 72);
@@ -779,7 +779,7 @@ function generateQuotePdf(q){
     y += 14;
   });
 
-  doc.save(`cotizacion-hikaru-folio-${q.folio}.pdf`);
+  doc.save(`cotizacion-hikari-folio-${q.folio}.pdf`);
 }
 
 function resetFormForNext(){
@@ -836,7 +836,7 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Cotizaciones');
   const stamp = new Date().toISOString().slice(0,10);
-  XLSX.writeFile(wb, `historial-cotizaciones-hikaru-${stamp}.xlsx`);
+  XLSX.writeFile(wb, `historial-cotizaciones-hikari-${stamp}.xlsx`);
 });
 
 // ---------- calculation ----------
