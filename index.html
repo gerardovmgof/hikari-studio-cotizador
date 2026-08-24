@@ -138,12 +138,12 @@ input:disabled{color:var(--ink-soft); border-bottom-style:dashed;}
 }
 .stamp.show{opacity:1;}
 .stamp::before{content:""; position:absolute; inset:10px; border:1px dashed var(--red); border-radius:50%; pointer-events:none;}
-.stamp-pct-input{
+input.stamp-pct-input{
   appearance:textfield; width:64px; text-align:center; font-family:'Shippori Mincho', serif; font-weight:800;
-  font-size:26px; color:var(--red); line-height:1; background:transparent; border:none; outline:none; padding:0;
+  font-size:26px; color:var(--red); line-height:1; background:transparent; border:none; border-bottom:none; outline:none; padding:0;
 }
-.stamp-pct-input::-webkit-outer-spin-button, .stamp-pct-input::-webkit-inner-spin-button{appearance:none; margin:0;}
-.stamp-pct-input:focus{border-bottom:1.5px solid var(--red);}
+input.stamp-pct-input::-webkit-outer-spin-button, input.stamp-pct-input::-webkit-inner-spin-button{appearance:none; margin:0;}
+input.stamp-pct-input:focus{border-bottom:1.5px solid var(--red);}
 .stamp .pct-label{font-family:'Shippori Mincho', serif; font-size:9px; letter-spacing:0.1em; color:var(--red); white-space:nowrap;}
 
 .cards{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
