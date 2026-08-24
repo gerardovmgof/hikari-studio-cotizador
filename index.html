@@ -132,14 +132,19 @@ input:disabled{color:var(--ink-soft); border-bottom-style:dashed;}
 .storage-note.show{display:block;}
 
 .stamp{
-  width:104px; height:104px; min-width:104px; border-radius:50%; border:2px solid var(--red);
-  position:relative; display:flex; align-items:center; justify-content:center;
-  transform:rotate(-9deg); opacity:0; transition:opacity 0.35s ease; mix-blend-mode:multiply;
+  width:128px; height:128px; min-width:128px; border-radius:50%; border:2px solid var(--red);
+  position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  transform:rotate(-9deg); opacity:0; transition:opacity 0.35s ease;
 }
 .stamp.show{opacity:1;}
-.stamp::before{content:""; position:absolute; inset:8px; border:1px dashed var(--red); border-radius:50%;}
-.stamp .pct{font-family:'Shippori Mincho', serif; font-weight:800; font-size:26px; color:var(--red); line-height:1;}
-.stamp .pct-label{position:absolute; bottom:16px; font-family:'Shippori Mincho', serif; font-size:8px; letter-spacing:0.14em; color:var(--red);}
+.stamp::before{content:""; position:absolute; inset:10px; border:1px dashed var(--red); border-radius:50%; pointer-events:none;}
+.stamp-pct-input{
+  appearance:textfield; width:64px; text-align:center; font-family:'Shippori Mincho', serif; font-weight:800;
+  font-size:26px; color:var(--red); line-height:1; background:transparent; border:none; outline:none; padding:0;
+}
+.stamp-pct-input::-webkit-outer-spin-button, .stamp-pct-input::-webkit-inner-spin-button{appearance:none; margin:0;}
+.stamp-pct-input:focus{border-bottom:1.5px solid var(--red);}
+.stamp .pct-label{font-family:'Shippori Mincho', serif; font-size:9px; letter-spacing:0.1em; color:var(--red); white-space:nowrap;}
 
 .cards{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
 .card{border:1px solid var(--line); background:var(--paper-light); padding:22px 20px; cursor:pointer; position:relative; transition:border-color 0.2s ease, background 0.2s ease;}
@@ -220,6 +225,12 @@ input:disabled{color:var(--ink-soft); border-bottom-style:dashed;}
   transition:background 0.2s ease, color 0.2s ease;
 }
 .pdf-row-btn:hover{background:var(--red); color:white;}
+.delete-row-btn{
+  font-family:'EB Garamond', serif; font-size:14px; line-height:1;
+  background:transparent; color:var(--ink-soft); border:1px solid var(--line); padding:4px 9px; cursor:pointer;
+  transition:border-color 0.2s ease, color 0.2s ease;
+}
+.delete-row-btn:hover{border-color:var(--red); color:var(--red);}
 
 footer{padding:34px 56px 46px;}
 footer h4{font-family:'Shippori Mincho', serif; font-size:13px; letter-spacing:0.14em; color:var(--ink-soft); margin:0 0 10px;}
@@ -263,7 +274,7 @@ footer ul:last-child{margin-bottom:0;}
       <span class="section-num">01</span>
       <span class="section-title">Cliente y folio</span>
     </div>
-    <p class="section-help">El folio se asigna automáticamente a partir del registro guardado, para que nunca se repita. Puedes editarlo si necesitas capturar una cotización anterior.</p>
+    <p class="section-help">El folio se sugiere automáticamente (reutiliza números de cotizaciones borradas), pero puedes editarlo. El descuento lo decides tú en cada cotización.</p>
     <div class="client-row">
       <div class="field-block">
         <label class="field-label">NOMBRE DEL CLIENTE</label>
@@ -287,8 +298,8 @@ footer ul:last-child{margin-bottom:0;}
         <div class="storage-note" id="storageNote">No se pudo conectar con el registro compartido en este momento. Verifica tu conexión y recarga la página antes de guardar.</div>
       </div>
       <div class="stamp" id="stamp">
-        <div class="pct" id="stampPct">0%</div>
-        <div class="pct-label">DESCUENTO</div>
+        <input type="number" id="discountPct" class="stamp-pct-input" min="0" max="100" step="1" value="0">
+        <div class="pct-label">% DESCUENTO</div>
       </div>
     </div>
   </section>
@@ -377,7 +388,7 @@ footer ul:last-child{margin-bottom:0;}
     <div class="history-wrap">
       <table class="history-table" id="historyTable">
         <thead>
-          <tr><th>Folio</th><th>Cliente</th><th>Servicio(s)</th><th>Desc.</th><th>Total</th><th>Fecha</th><th>PDF</th></tr>
+          <tr><th>Folio</th><th>Cliente</th><th>Servicio(s)</th><th>Desc.</th><th>Total</th><th>Fecha</th><th>PDF</th><th></th></tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
@@ -435,6 +446,17 @@ function getTier(n){
   if(!n || n < 1) return null;
   for(const t of tiers){ if(n <= t.max) return t; }
   return {min:161, max:Infinity, pct:0};
+}
+
+function getCurrentDiscountPct(){
+  const raw = parseFloat(document.getElementById('discountPct').value);
+  if(isNaN(raw)) return 0;
+  return Math.min(100, Math.max(0, raw));
+}
+
+function suggestDiscountFromFolio(n){
+  const tier = getTier(n);
+  document.getElementById('discountPct').value = tier ? tier.pct : 0;
 }
 
 function fmt(n){
@@ -560,7 +582,8 @@ function renderHistory(){
         <td>${q.descuentoPct}%</td>
         <td>${fmt(q.total)}</td>
         <td>${escapeHtml(q.fecha)}</td>
-        <td><button type="button" class="pdf-row-btn" data-folio="${q.folio}">PDF</button></td>`;
+        <td><button type="button" class="pdf-row-btn" data-folio="${q.folio}">PDF</button></td>
+        <td><button type="button" class="delete-row-btn" data-folio="${q.folio}" title="Borrar cotización">✕</button></td>`;
       body.appendChild(tr);
     });
     body.querySelectorAll('.pdf-row-btn').forEach(btn=>{
@@ -570,8 +593,27 @@ function renderHistory(){
         if(q) generateQuotePdf(q);
       });
     });
+    body.querySelectorAll('.delete-row-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> deleteQuote(parseInt(btn.dataset.folio)));
+    });
   }
   count.textContent = sorted.length ? `${sorted.length} registrada(s)` : '';
+}
+
+async function deleteQuote(folio){
+  if(!confirm(`¿Borrar la cotización folio #${folio}? Esta acción no se puede deshacer.`)) return;
+  try{
+    const res = await fetch(`/api/quotes?folio=${folio}`, { method:'DELETE' });
+    if(!res.ok){ alert('No se pudo borrar la cotización.'); return; }
+  }catch(e){
+    console.error('No se pudo borrar la cotización:', e);
+    alert('No se pudo borrar la cotización. Verifica tu conexión.');
+    return;
+  }
+  await loadRegistry();
+  updateStorageNote();
+  renderHistory();
+  checkFolioStatus();
 }
 
 function isDuplicateFolio(n){
@@ -609,8 +651,7 @@ async function saveQuote(){
   saveBtn.disabled = true;
   saveMsg.textContent = 'Guardando…';
 
-  const tier = getTier(n);
-  const pct = tier ? tier.pct : 0;
+  const pct = getCurrentDiscountPct();
   const serviciosTexto = [...selectedServices].map(s=>services[s].name).join(' + ');
   const totalTexto = document.getElementById('sumTotal').textContent;
   const totalNumerico = parseFloat(totalTexto.replace(/[^0-9.]/g,'')) || 0;
@@ -796,14 +837,17 @@ function resetFormForNext(){
   document.querySelectorAll('.addon-qty-input').forEach(inp=>{ inp.value = 0; inp.disabled = true; });
   document.getElementById('ivaToggle').checked = false;
   document.getElementById('quoteNumber').value = registry.nextFolio;
+  suggestDiscountFromFolio(registry.nextFolio);
   checkFolioStatus();
   recalc();
 }
 
-document.getElementById('quoteNumber').addEventListener('input', ()=>{
+document.getElementById('quoteNumber').addEventListener('input', (e)=>{
+  suggestDiscountFromFolio(parseInt(e.target.value));
   checkFolioStatus();
   recalc();
 });
+document.getElementById('discountPct').addEventListener('input', recalc);
 document.getElementById('saveBtn').addEventListener('click', saveQuote);
 document.getElementById('ivaToggle').addEventListener('change', recalc);
 
@@ -891,23 +935,21 @@ function recalc(){
   document.getElementById('sumSubtotal').textContent = fmt(subtotal);
 
   const n = parseInt(document.getElementById('quoteNumber').value);
-  const tier = getTier(n);
   const stamp = document.getElementById('stamp');
   const tierNote = document.getElementById('tierNote');
-  let pct = 0;
+  const pct = getCurrentDiscountPct();
 
-  if(tier){
-    pct = tier.pct;
+  if(n && n >= 1){
     stamp.classList.add('show');
-    document.getElementById('stampPct').textContent = pct + '%';
-    if(pct > 0){
-      tierNote.innerHTML = `Folio <b>#${n}</b> — rango <b>${tier.min}–${tier.max===Infinity?'∞':tier.max}</b>: <b>${pct}% de descuento</b>.`;
+    const tier = getTier(n);
+    if(tier && tier.pct > 0){
+      tierNote.innerHTML = `Folio <b>#${n}</b> — sugerencia por rango <b>${tier.min}–${tier.max===Infinity?'∞':tier.max}</b>: <b>${tier.pct}%</b>. Puedes cambiar el descuento en el sello.`;
     } else {
-      tierNote.innerHTML = `Folio <b>#${n}</b> — fuera de los rangos promocionales (1–160). Sin descuento por volumen.`;
+      tierNote.innerHTML = `Folio <b>#${n}</b> — sin rango promocional sugerido. Define el descuento en el sello.`;
     }
   } else {
     stamp.classList.remove('show');
-    tierNote.textContent = 'Ingresa o confirma el folio para calcular el descuento.';
+    tierNote.textContent = 'Ingresa o confirma el folio.';
   }
 
   const discountAmount = subtotal * (pct/100);
@@ -934,6 +976,7 @@ function recalc(){
   await loadRegistry();
   document.getElementById('quoteNumber').value = registry.nextFolio;
   document.getElementById('quoteNumber').placeholder = '';
+  suggestDiscountFromFolio(registry.nextFolio);
   updateStorageNote();
   renderHistory();
   checkFolioStatus();

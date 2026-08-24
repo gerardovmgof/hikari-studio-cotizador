@@ -29,13 +29,11 @@ export default async function handler(req, res) {
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: error.message });
 
-    const { data: maxRow } = await supabase
-      .from('quotes')
-      .select('folio')
-      .order('folio', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const nextFolio = maxRow ? maxRow.folio + 1 : 1;
+    const { data: allFolios, error: folioError } = await supabase.from('quotes').select('folio');
+    if (folioError) return res.status(500).json({ error: folioError.message });
+    const folioSet = new Set(allFolios.map(r => r.folio));
+    let nextFolio = 1;
+    while (folioSet.has(nextFolio)) nextFolio++;
 
     return res.status(200).json({ quotes: data.map(rowToQuote), nextFolio });
   }
@@ -71,6 +69,14 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
+    const { folio } = req.query;
+    if (folio !== undefined) {
+      const folioNum = parseInt(folio, 10);
+      if (!Number.isInteger(folioNum)) return res.status(400).json({ error: 'Folio inválido.' });
+      const { error } = await supabase.from('quotes').delete().eq('folio', folioNum);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ ok: true });
+    }
     const { error } = await supabase.from('quotes').delete().gte('folio', 0);
     if (error) return res.status(500).json({ error: error.message });
     return res.status(200).json({ ok: true });
