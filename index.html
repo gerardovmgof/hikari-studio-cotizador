@@ -218,6 +218,12 @@ input.price-input:focus{outline:none; border-bottom-style:solid;}
 .summary-total .amount{font-family:'Shippori Mincho', serif; font-size:34px; font-weight:700; color:var(--red);}
 .iva-toggle{display:flex; align-items:center; gap:10px; margin-top:14px; font-size:14px; color:var(--ink-soft);}
 .iva-toggle input{width:16px; height:16px;}
+input.isr-pct-input{
+  width:52px; height:auto; font-family:'EB Garamond', serif; font-size:14px; padding:2px 4px;
+  background:transparent; border:none; border-bottom:1px solid var(--ink-soft); color:var(--ink); margin-left:2px;
+}
+input.isr-pct-input:disabled{color:var(--ink-soft); border-bottom-style:dashed;}
+input.isr-pct-input:focus{outline:none; border-bottom-color:var(--red);}
 
 .save-row{margin-top:22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;}
 .save-btn{
@@ -418,8 +424,9 @@ footer ul:last-child{margin-bottom:0;}
       <div class="summary-line muted"><span>Adicionales</span><span id="sumAddons">$0</span></div>
       <div class="summary-line muted"><span>Conceptos personalizados</span><span id="sumCustom">$0</span></div>
       <div class="summary-line"><span>Subtotal</span><span id="sumSubtotal">$0</span></div>
-      <div class="summary-line discount"><span id="sumDiscountLabel">Descuento (0%)</span><span id="sumDiscount">-$0</span></div>
+      <div class="summary-line discount" id="sumDiscountRow" style="display:none;"><span id="sumDiscountLabel">Descuento (0%)</span><span id="sumDiscount">-$0</span></div>
       <div class="summary-line muted" id="sumIvaRow" style="display:none;"><span>IVA (16%)</span><span id="sumIva">$0</span></div>
+      <div class="summary-line discount" id="sumIsrRow" style="display:none;"><span id="sumIsrLabel">ISR retenido (0%)</span><span id="sumIsr">-$0</span></div>
       <div class="summary-divider"></div>
       <div class="summary-total">
         <span class="label">TOTAL A PAGAR</span>
@@ -428,6 +435,11 @@ footer ul:last-child{margin-bottom:0;}
       <label class="iva-toggle">
         <input type="checkbox" id="ivaToggle">
         Incluir IVA (16%) en el total
+      </label>
+      <label class="iva-toggle">
+        <input type="checkbox" id="isrToggle">
+        Aplicar retención de ISR
+        <input type="number" id="isrPct" min="0" max="100" step="0.01" value="10" class="isr-pct-input" disabled>%
       </label>
       <div class="save-row">
         <button class="save-btn" id="saveBtn">Guardar cotización en el registro</button>
@@ -522,6 +534,12 @@ function getTier(n){
 
 function getCurrentDiscountPct(){
   const raw = parseFloat(document.getElementById('discountPct').value);
+  if(isNaN(raw)) return 0;
+  return Math.min(100, Math.max(0, raw));
+}
+
+function getCurrentIsrPct(){
+  const raw = parseFloat(document.getElementById('isrPct').value);
   if(isNaN(raw)) return 0;
   return Math.min(100, Math.max(0, raw));
 }
@@ -804,8 +822,12 @@ async function saveQuote(){
   });
   const subtotalNumerico = [...serviceItems, ...addonItems, ...customItems].reduce((s,it)=>s+it.amount, 0);
   const discountAmountNumerico = subtotalNumerico * (pct/100);
+  const totalAfterDiscountNumerico = subtotalNumerico - discountAmountNumerico;
   const ivaOn = document.getElementById('ivaToggle').checked;
-  const ivaAmountNumerico = ivaOn ? (subtotalNumerico - discountAmountNumerico) * 0.16 : 0;
+  const ivaAmountNumerico = ivaOn ? totalAfterDiscountNumerico * 0.16 : 0;
+  const isrOn = document.getElementById('isrToggle').checked;
+  const isrPctNumerico = getCurrentIsrPct();
+  const isrAmountNumerico = isrOn ? totalAfterDiscountNumerico * (isrPctNumerico/100) : 0;
 
   const quote = {
     folio: n,
@@ -819,7 +841,10 @@ async function saveQuote(){
     subtotal: subtotalNumerico,
     descuentoMonto: discountAmountNumerico,
     ivaOn: ivaOn,
-    ivaMonto: ivaAmountNumerico
+    ivaMonto: ivaAmountNumerico,
+    isrOn: isrOn,
+    isrPct: isrPctNumerico,
+    isrMonto: isrAmountNumerico
   };
 
   let persisted = false;
@@ -954,16 +979,26 @@ async function generateQuotePdf(q){
   doc.text(fmt(q.subtotal || 0), 539, y, {align:'right'});
   y += 18;
 
-  doc.setTextColor(165, 55, 44);
-  doc.text(`Descuento (${q.descuentoPct}%)`, marginX, y);
-  doc.text('-' + fmt(q.descuentoMonto || 0), 539, y, {align:'right'});
-  y += 18;
-  doc.setTextColor(42, 36, 32);
+  if(q.descuentoPct > 0){
+    doc.setTextColor(165, 55, 44);
+    doc.text(`Descuento (${q.descuentoPct}%)`, marginX, y);
+    doc.text('-' + fmt(q.descuentoMonto || 0), 539, y, {align:'right'});
+    y += 18;
+    doc.setTextColor(42, 36, 32);
+  }
 
   if(q.ivaOn){
     doc.text('IVA (16%)', marginX, y);
     doc.text(fmt(q.ivaMonto || 0), 539, y, {align:'right'});
     y += 18;
+  }
+
+  if(q.isrOn){
+    doc.setTextColor(165, 55, 44);
+    doc.text(`ISR retenido (${q.isrPct}%)`, marginX, y);
+    doc.text('-' + fmt(q.isrMonto || 0), 539, y, {align:'right'});
+    y += 18;
+    doc.setTextColor(42, 36, 32);
   }
 
   y += 6;
@@ -1007,6 +1042,8 @@ function resetFormForNext(){
   document.querySelectorAll('.addon-qty-input').forEach(inp=>{ inp.value = 0; inp.disabled = true; });
   clearCustomItems();
   document.getElementById('ivaToggle').checked = false;
+  document.getElementById('isrToggle').checked = false;
+  document.getElementById('isrPct').disabled = true;
   document.getElementById('discountPct').value = 0;
   document.getElementById('quoteNumber').value = registry.nextFolio;
   checkFolioStatus();
@@ -1021,6 +1058,11 @@ document.getElementById('discountPct').addEventListener('input', recalc);
 document.getElementById('historySearch').addEventListener('input', renderHistory);
 document.getElementById('saveBtn').addEventListener('click', saveQuote);
 document.getElementById('ivaToggle').addEventListener('change', recalc);
+document.getElementById('isrToggle').addEventListener('change', (e)=>{
+  document.getElementById('isrPct').disabled = !e.target.checked;
+  recalc();
+});
+document.getElementById('isrPct').addEventListener('input', recalc);
 
 // reset registry (double confirmation, no native dialogs)
 const resetLink = document.getElementById('resetLink');
@@ -1128,8 +1170,14 @@ function recalc(){
   }
 
   const discountAmount = subtotal * (pct/100);
-  document.getElementById('sumDiscountLabel').textContent = `Descuento (${pct}%)`;
-  document.getElementById('sumDiscount').textContent = '-' + fmt(discountAmount);
+  const discountRow = document.getElementById('sumDiscountRow');
+  if(pct > 0){
+    document.getElementById('sumDiscountLabel').textContent = `Descuento (${pct}%)`;
+    document.getElementById('sumDiscount').textContent = '-' + fmt(discountAmount);
+    discountRow.style.display = 'flex';
+  } else {
+    discountRow.style.display = 'none';
+  }
 
   let totalAfterDiscount = subtotal - discountAmount;
   const ivaOn = document.getElementById('ivaToggle').checked;
@@ -1143,6 +1191,20 @@ function recalc(){
   } else {
     ivaRow.style.display = 'none';
   }
+
+  const isrOn = document.getElementById('isrToggle').checked;
+  const isrRow = document.getElementById('sumIsrRow');
+  if(isrOn){
+    const isrPct = getCurrentIsrPct();
+    const isrAmount = totalAfterDiscount * (isrPct/100);
+    document.getElementById('sumIsrLabel').textContent = `ISR retenido (${isrPct}%)`;
+    document.getElementById('sumIsr').textContent = '-' + fmt(isrAmount);
+    isrRow.style.display = 'flex';
+    finalTotal -= isrAmount;
+  } else {
+    isrRow.style.display = 'none';
+  }
+
   document.getElementById('sumTotal').textContent = fmt(finalTotal);
 }
 

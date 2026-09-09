@@ -14,6 +14,9 @@ function rowToQuote(row) {
     descuentoMonto: Number(row.descuento_monto),
     ivaOn: row.iva_on,
     ivaMonto: Number(row.iva_monto),
+    isrOn: row.isr_on,
+    isrPct: Number(row.isr_pct) || 0,
+    isrMonto: Number(row.isr_monto) || 0,
     createdAt: row.created_at,
   };
 }
@@ -56,6 +59,9 @@ export default async function handler(req, res) {
       descuento_monto: q.descuentoMonto || 0,
       iva_on: !!q.ivaOn,
       iva_monto: q.ivaMonto || 0,
+      isr_on: !!q.isrOn,
+      isr_pct: q.isrPct || 0,
+      isr_monto: q.isrMonto || 0,
       total: q.total || 0,
       fecha: q.fecha || '',
     });
