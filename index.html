@@ -941,7 +941,7 @@ async function generateQuotePdf(q){
 
   const logoDataUrl = await getLogoDataUrl();
   if(logoDataUrl){
-    const logoW = 46, logoH = 48.5;
+    const logoW = 59, logoH = 62;
     try{
       doc.addImage(logoDataUrl, 'PNG', 539 - logoW, 24, logoW, logoH);
     }catch(e){
