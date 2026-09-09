@@ -280,10 +280,30 @@ input.isr-pct-input:focus{outline:none; border-bottom-color:var(--red);}
 .delete-row-btn:hover{border-color:var(--red); color:var(--red);}
 
 footer{padding:34px 56px 46px;}
-footer h4{font-family:'Shippori Mincho', serif; font-size:13px; letter-spacing:0.14em; color:var(--ink-soft); margin:0 0 10px;}
+footer h4{font-family:'Shippori Mincho', serif; font-size:13px; letter-spacing:0.14em; color:var(--ink-soft); margin:0;}
 footer ul{margin:0 0 20px; padding-left:18px; font-size:14px; color:var(--ink-soft); line-height:1.7;}
 footer ul:last-child{margin-bottom:0;}
 .foot-mark{text-align:center; font-family:'Shippori Mincho', serif; font-size:11px; letter-spacing:0.3em; color:var(--gold); margin-top:10px;}
+
+.footer-notes-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+.edit-notes-btn{
+  font-family:'EB Garamond', serif; font-size:12.5px; letter-spacing:0.04em;
+  background:transparent; color:var(--ink-soft); border:1px solid var(--line); padding:4px 10px; cursor:pointer;
+}
+.edit-notes-btn:hover{border-color:var(--red); color:var(--red);}
+.footer-notes-edit{margin-bottom:20px;}
+.footer-note-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+.footer-note-input{
+  flex:1; font-family:'EB Garamond', serif; font-size:14px; padding:7px 9px;
+  background:transparent; border:1px solid var(--line); color:var(--ink);
+}
+.footer-note-input:focus{border-color:var(--red); outline:none;}
+.footer-notes-actions{display:flex; gap:10px; margin-top:12px;}
+.cancel-notes-btn{
+  font-family:'EB Garamond', serif; font-size:13px;
+  background:transparent; color:var(--ink-soft); border:1px solid var(--line); padding:9px 16px; cursor:pointer;
+}
+.cancel-notes-btn:hover{border-color:var(--ink-soft);}
 
 @media (max-width:640px){
   body{padding:24px 8px 60px;}
@@ -475,14 +495,19 @@ footer ul:last-child{margin-bottom:0;}
   </section>
 
   <footer>
-    <h4>NOTAS IMPORTANTES</h4>
-    <ul>
-      <li>Precios en MXN. Pueden variar según ubicación y complejidad del proyecto.</li>
-      <li>Se requiere anticipo del 50% para apartar la fecha.</li>
-      <li>El saldo se liquida al entregar el material final.</li>
-      <li>Precios base no incluyen IVA (16%), salvo que se active la opción correspondiente.</li>
-      <li>Esta cotización es válida por 30 días a partir de su emisión.</li>
-    </ul>
+    <div class="footer-notes-head">
+      <h4>NOTAS IMPORTANTES</h4>
+      <button type="button" class="edit-notes-btn" id="editNotesBtn">Editar</button>
+    </div>
+    <ul id="footerNotesView"></ul>
+    <div class="footer-notes-edit" id="footerNotesEdit" style="display:none;">
+      <div id="footerNotesEditList"></div>
+      <button type="button" class="add-custom-btn" id="addFooterNoteBtn">+ Agregar nota</button>
+      <div class="footer-notes-actions">
+        <button type="button" class="save-btn" id="saveFooterNotesBtn">Guardar notas</button>
+        <button type="button" class="cancel-notes-btn" id="cancelFooterNotesBtn">Cancelar</button>
+      </div>
+    </div>
     <div class="foot-mark">光 HIKARI STUDIO</div>
   </footer>
 </div>
@@ -890,7 +915,7 @@ async function saveQuote(){
 let logoDataUrlPromise = null;
 function getLogoDataUrl(){
   if(!logoDataUrlPromise){
-    logoDataUrlPromise = fetch('logo.png')
+    logoDataUrlPromise = fetch('logo-pdf.png')
       .then(res => res.blob())
       .then(blob => new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -912,11 +937,16 @@ async function generateQuotePdf(q){
   const doc = new jsPDF({unit:'pt', format:'a4'});
   const marginX = 56;
   let y = 64;
+  const textX = marginX;
 
   const logoDataUrl = await getLogoDataUrl();
-  const textX = logoDataUrl ? marginX + 46 : marginX;
   if(logoDataUrl){
-    doc.addImage(logoDataUrl, 'PNG', marginX, y - 30, 36, 36);
+    const logoW = 46, logoH = 48.5;
+    try{
+      doc.addImage(logoDataUrl, 'PNG', 539 - logoW, 24, logoW, logoH);
+    }catch(e){
+      console.error('No se pudo insertar el logo en el PDF:', e);
+    }
   }
 
   doc.setFont('helvetica', 'bold');
@@ -1016,14 +1046,7 @@ async function generateQuotePdf(q){
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(90, 83, 72);
-  const notas = [
-    'Precios en MXN. Pueden variar según ubicación y complejidad del proyecto.',
-    'Se requiere anticipo del 50% para apartar la fecha.',
-    'El saldo se liquida al entregar el material final.',
-    'Precios base no incluyen IVA (16%), salvo que se active la opción correspondiente.',
-    'Esta cotización es válida por 30 días a partir de su emisión.'
-  ];
-  notas.forEach(n=>{
+  footerNotes.forEach(n=>{
     doc.text('• ' + n, marginX, y, {maxWidth:483});
     y += 14;
   });
@@ -1208,6 +1231,82 @@ function recalc(){
   document.getElementById('sumTotal').textContent = fmt(finalTotal);
 }
 
+// ---------- notas importantes (editables, compartidas) ----------
+let footerNotes = [];
+
+async function loadFooterNotes(){
+  try{
+    const res = await fetch('/api/notes');
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    footerNotes = Array.isArray(data.notes) ? data.notes : [];
+  }catch(e){
+    console.error('No se pudieron cargar las notas importantes:', e);
+  }
+  renderFooterNotesView();
+}
+
+function renderFooterNotesView(){
+  const view = document.getElementById('footerNotesView');
+  view.innerHTML = footerNotes.map(n => `<li>${escapeHtml(n)}</li>`).join('');
+}
+
+function renderFooterNotesEdit(){
+  const list = document.getElementById('footerNotesEditList');
+  list.innerHTML = '';
+  footerNotes.forEach(n => addFooterNoteRow(n));
+}
+
+function addFooterNoteRow(value){
+  const list = document.getElementById('footerNotesEditList');
+  const row = document.createElement('div');
+  row.className = 'footer-note-row';
+  row.innerHTML = `
+    <input type="text" class="footer-note-input" value="${escapeHtml(value || '')}">
+    <button type="button" class="delete-row-btn" title="Quitar">✕</button>`;
+  row.querySelector('.delete-row-btn').addEventListener('click', ()=> row.remove());
+  list.appendChild(row);
+}
+
+document.getElementById('editNotesBtn').addEventListener('click', ()=>{
+  renderFooterNotesEdit();
+  document.getElementById('footerNotesView').style.display = 'none';
+  document.getElementById('editNotesBtn').style.display = 'none';
+  document.getElementById('footerNotesEdit').style.display = 'block';
+});
+
+document.getElementById('addFooterNoteBtn').addEventListener('click', ()=> addFooterNoteRow(''));
+
+document.getElementById('cancelFooterNotesBtn').addEventListener('click', ()=>{
+  document.getElementById('footerNotesEdit').style.display = 'none';
+  document.getElementById('footerNotesView').style.display = 'block';
+  document.getElementById('editNotesBtn').style.display = 'inline-block';
+});
+
+document.getElementById('saveFooterNotesBtn').addEventListener('click', async ()=>{
+  const inputs = [...document.querySelectorAll('#footerNotesEditList .footer-note-input')];
+  const newNotes = inputs.map(inp => inp.value.trim()).filter(Boolean);
+  const btn = document.getElementById('saveFooterNotesBtn');
+  btn.disabled = true;
+  try{
+    const res = await fetch('/api/notes', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ notes: newNotes })
+    });
+    if(!res.ok) throw new Error('bad response');
+    footerNotes = newNotes;
+    renderFooterNotesView();
+    document.getElementById('footerNotesEdit').style.display = 'none';
+    document.getElementById('footerNotesView').style.display = 'block';
+    document.getElementById('editNotesBtn').style.display = 'inline-block';
+  }catch(e){
+    console.error('No se pudieron guardar las notas:', e);
+    alert('No se pudieron guardar las notas. Verifica tu conexión e intenta de nuevo.');
+  }
+  btn.disabled = false;
+});
+
 // ---------- init ----------
 (async function init(){
   await loadRegistry();
@@ -1217,6 +1316,7 @@ function recalc(){
   renderHistory();
   checkFolioStatus();
   recalc();
+  await loadFooterNotes();
 })();
 </script>
 </body>
