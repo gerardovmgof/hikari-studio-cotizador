@@ -204,6 +204,11 @@ input.price-input:focus{outline:none; border-bottom-style:solid;}
 .addon-desc{font-size:13px; font-style:italic; color:var(--ink-soft); margin-top:3px; max-width:340px; line-height:1.45;}
 .addon-right{display:flex; flex-direction:column; align-items:flex-end; gap:6px;}
 .addon-price{font-family:'Shippori Mincho', serif; font-size:15px; color:var(--ink-soft); white-space:nowrap;}
+input.addon-price-input{
+  width:56px; font-family:'Shippori Mincho', serif; font-size:15px; color:var(--ink-soft);
+  background:transparent; border:none; border-bottom:1px dashed var(--ink-soft); padding:0 2px; text-align:right;
+}
+input.addon-price-input:focus{outline:none; border-bottom-style:solid; border-bottom-color:var(--red); color:var(--ink);}
 .addon-qty{display:flex; align-items:center; gap:8px;}
 .addon-qty input[type=number]{width:56px; font-size:15px; text-align:center; border-bottom:1px solid var(--line);}
 .addon-qty span{font-size:13px; color:var(--ink-soft);}
@@ -587,7 +592,7 @@ addons.forEach(a=>{
           <span class="addon-desc">${a.desc}</span>
         </span>
       </div>
-      <div class="addon-right"><span class="addon-price">$${a.price.toLocaleString('es-MX')}</span></div>`;
+      <div class="addon-right"><span class="addon-price">$<input type="number" min="0" step="1" value="${a.price}" data-price="${a.id}" class="addon-price-input"></span></div>`;
   }else{
     row.innerHTML = `
       <div class="addon-left">
@@ -598,7 +603,7 @@ addons.forEach(a=>{
         </span>
       </div>
       <div class="addon-right">
-        <span class="addon-price">$${a.price.toLocaleString('es-MX')} / ${a.unit}</span>
+        <span class="addon-price">$<input type="number" min="0" step="1" value="${a.price}" data-price="${a.id}" class="addon-price-input"> / ${a.unit}</span>
         <div class="addon-qty">
           <input type="number" min="0" value="0" step="1" data-qty="${a.id}" class="addon-qty-input" disabled>
           <span>${a.unit}(s)</span>
@@ -620,6 +625,13 @@ document.querySelectorAll('.addon-check').forEach(chk=>{
   });
 });
 document.querySelectorAll('.addon-qty-input').forEach(inp=> inp.addEventListener('input', recalc));
+document.querySelectorAll('.addon-price-input').forEach(inp=> inp.addEventListener('input', recalc));
+
+function getAddonPrice(id, fallback){
+  const input = document.querySelector(`.addon-price-input[data-price="${id}"]`);
+  const val = input ? parseFloat(input.value) : NaN;
+  return isNaN(val) || val < 0 ? fallback : val;
+}
 
 // tocar cualquier parte de la fila (no solo el checkbox) la selecciona — más cómodo en celular
 document.querySelectorAll('.addon').forEach(row=>{
@@ -837,11 +849,12 @@ async function saveQuote(){
   addons.forEach(a=>{
     const chk = document.querySelector(`.addon-check[data-id="${a.id}"]`);
     if(chk && chk.checked){
+      const price = getAddonPrice(a.id, a.price);
       if(a.type==='checkbox'){
-        addonItems.push({label:a.label, amount:a.price});
+        addonItems.push({label:a.label, amount:price});
       }else{
         const qty = parseInt(document.querySelector(`[data-qty="${a.id}"]`).value) || 0;
-        if(qty > 0) addonItems.push({label:`${a.label} (${qty} ${a.unit}${qty>1?'s':''})`, amount:a.price*qty});
+        if(qty > 0) addonItems.push({label:`${a.label} (${qty} ${a.unit}${qty>1?'s':''})`, amount:price*qty});
       }
     }
   });
@@ -1063,6 +1076,10 @@ function resetFormForNext(){
   document.getElementById('price_video').value = services.video.price;
   document.querySelectorAll('.addon-check').forEach(chk=>{ chk.checked = false; });
   document.querySelectorAll('.addon-qty-input').forEach(inp=>{ inp.value = 0; inp.disabled = true; });
+  document.querySelectorAll('.addon-price-input').forEach(inp=>{
+    const addon = addons.find(a=>a.id===inp.dataset.price);
+    if(addon) inp.value = addon.price;
+  });
   clearCustomItems();
   document.getElementById('ivaToggle').checked = false;
   document.getElementById('isrToggle').checked = false;
@@ -1158,11 +1175,12 @@ function recalc(){
   addons.forEach(a=>{
     const chk = document.querySelector(`.addon-check[data-id="${a.id}"]`);
     if(chk && chk.checked){
+      const price = getAddonPrice(a.id, a.price);
       if(a.type==='checkbox'){
-        addonsTotal += a.price;
+        addonsTotal += price;
       } else {
         const qty = parseInt(document.querySelector(`[data-qty="${a.id}"]`).value) || 0;
-        addonsTotal += a.price * qty;
+        addonsTotal += price * qty;
       }
     }
   });
